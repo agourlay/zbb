@@ -1,0 +1,12 @@
+[package]
+name = "zbb"
+version = "0.1.0"
+authors = ["Arnaud Gourlay <arnaud.gourlay@commercetools.de>"]
+edition = "2018"
+
+[dependencies]
+reqwest = "0.9.22"
+select = "0.4.3"
+colored = "1.8"
+rayon = "1.2.0"
+clap = "2.33.0"
