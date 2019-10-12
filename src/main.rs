@@ -1,8 +1,3 @@
-extern crate reqwest;
-extern crate select;
-extern crate colored;
-extern crate clap;
-
 use select::document::Document;
 use select::node::Node;
 use select::predicate::*;

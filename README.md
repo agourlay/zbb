@@ -8,13 +8,13 @@ It provides the latest disruptions and delays on your favorite lines while you e
 
 Here is an example of output for a search regarding the `Bus 245` from `Berlin Main Station`.
 
-![alt text](./docs/example-bus-245.jpeg "Overview")
+![alt text](./docs/example-bus-245.png "Overview")
 
-This looks like a bad commute...
+This looks like a bad commute!
 
 ## How does zzb work?
 
-`zbb` works by scraping the content of http://mobil.bvg.de
+`zbb` works by scraping http://mobil.bvg.de
 
 ## Why?
 
@@ -24,7 +24,7 @@ This looks like a bad commute...
 
 ## Prior art
 
-- *Lots* of projects have followed the exact same strategy to by-pass the need for an API key.
+- *Lots* of projects have followed the same strategy to by-pass the need for an API key.
 - `zbb` pretends by no mean to do something new nor original. 
 
 ## Usage
@@ -40,7 +40,7 @@ e.g. `zbb --fast Sonnenallee S42`
 
 Then nothing prevents you from creating an alias :)
 
-`alias commute='zbb --fast Sonnenallee S42'`
+`alias next-train-home='zbb --fast Sonnenallee S42'`
 
 ## Installation
 
