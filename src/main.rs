@@ -199,7 +199,7 @@ fn make_departure_detail(
         .descendant(Name("tr"))
         .descendant(Class("tqTime"));
     let steps_elements_nodes: Vec<Node> = html.find(query_details).collect();
-    let steps_elements: Vec<String> = steps_elements_nodes
+    let delay_minutes = steps_elements_nodes
         .iter()
         .filter_map(|n| {
             let txt = sanitize_text_node(*n);
@@ -214,9 +214,8 @@ fn make_departure_detail(
                 None
             }
         })
-        .collect();
+        .next();
 
-    let delay_minutes = steps_elements.first().map(|d| d);
     let status = delay_minutes
         .map(|d| format!("delayed {}", d.to_owned()))
         .unwrap_or_else(|| "on time".to_string());
