@@ -137,15 +137,12 @@ fn get_fast_args() -> Option<(String, String)> {
             .max_values(2)
         ).get_matches();
 
-    let fast_args: Option<(String, String)> = match matches.values_of("fast") {
-        Some(values) => {
-            let vec: Vec<&str> = values.collect();
-            let first = vec.get(0).unwrap().to_string();
-            let second = vec.get(1).unwrap().to_string();
-            Some((first, second))
-        },
-        None => None
-    };
+    let fast_args: Option<(String, String)> = matches.values_of("fast").map(|mut values| {
+        (
+            values.next().unwrap().to_string(),
+            values.next().unwrap().to_string(),
+        )
+    });
     fast_args
 }
 
@@ -210,29 +207,11 @@ fn display_choices(choices: &Vec<String>) -> () {
                                            line));
 }
 
-fn repeat_string(txt: &str, time: usize) -> String {
-    (0..time).map(|_| txt).collect()
-}
-
-fn whitespace_of_size(size: usize) -> String {
-    repeat_string(" ", size)
-}
-
-fn whitespace_of_size_pretty(size: usize) -> String {
-    let extra = 3;
-    repeat_string(" ", size + extra)
-}
-
-fn column_header_padding(column_name: &str, max_item_length: usize) -> String {
+fn column_padding(column_name: &str, max_item_length: usize, header_mode: bool) -> String {
     let column_label_len = column_name.chars().count();
     let padding_size = if max_item_length > column_label_len { max_item_length - column_label_len} else {0};
-    whitespace_of_size_pretty(padding_size)
-}
-
-fn column_element_padding(element: &str, max_element_len: usize) -> String {
-    let element_len = element.chars().count();
-    let element_padding_size = if max_element_len > element_len { max_element_len - element_len} else {0};
-    whitespace_of_size(element_padding_size)
+    let extra = if header_mode {3} else {0}; // for headers we inject some breathing space
+    " ".repeat(padding_size + extra)
 }
 
 fn padding_for_header<F>(departures: &[DepartureDetail], field_selector: F, header_label: &str) -> String
@@ -241,7 +220,7 @@ fn padding_for_header<F>(departures: &[DepartureDetail], field_selector: F, head
         .max_by(|x, y| field_selector(x).chars().count().cmp(&field_selector(y).chars().count()))
         .map(|d| field_selector(d).chars().count())
         .unwrap();
-    column_header_padding(header_label, max_elem_size)
+    column_padding(header_label, max_elem_size, true)
 }
 
 fn display_departures(station_detail: StationDetail) -> () {
@@ -280,13 +259,13 @@ fn display_departures(station_detail: StationDetail) -> () {
     let header_len = header.chars().count();
 
     println!("{}", header.italic());
-    println!("{}", repeat_string("-", header_len));
+    println!("{}", "-".repeat(header_len));
     departures.iter().for_each(
         |d| {
-            let after_line_padding = column_element_padding(&d.line, line_header_len);
-            let after_departure_padding = column_element_padding(&d.time, departure_header_len);
-            let after_status_padding = column_element_padding(&d.status, status_header_len);
-            let after_direction_padding = column_element_padding(&d.direction, direction_header_len);
+            let after_line_padding = column_padding(&d.line, line_header_len, false);
+            let after_departure_padding = column_padding(&d.time, departure_header_len, false);
+            let after_status_padding = column_padding(&d.status, status_header_len, false);
+            let after_direction_padding = column_padding(&d.direction, direction_header_len, false);
             println!("{}{}{}{}{}{}{}{}{}",
                      d.line, after_line_padding,
                      d.time, after_departure_padding,
@@ -295,7 +274,7 @@ fn display_departures(station_detail: StationDetail) -> () {
                      d.platform.as_ref().unwrap_or(&"".to_string()));
         }
     );
-    println!("{}", repeat_string("-", header_len))
+    println!("{}", "-".repeat(header_len))
 }
 
 fn sentence_chunks(s: &str, max_line_len: usize) -> String {
