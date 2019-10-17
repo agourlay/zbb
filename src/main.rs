@@ -267,13 +267,8 @@ where
 {
     let max_elem_size = departures
         .iter()
-        .max_by(|x, y| {
-            field_selector(x)
-                .chars()
-                .count()
-                .cmp(&field_selector(y).chars().count())
-        })
         .map(|d| field_selector(d).chars().count())
+        .max_by(|x, y| x.cmp(y))
         .unwrap();
     column_padding(header_label, max_elem_size, true)
 }
