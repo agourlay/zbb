@@ -98,7 +98,7 @@ fn main() -> Result<(), reqwest::Error> {
         if available_lines.is_empty() {
             println!("No lines available at this station");
         } else {
-            let line = match fast_args.clone() {
+            let line = match fast_args {
                 Some((_, fast_line)) => {
                     if available_lines.contains(&fast_line) {
                         fast_line
@@ -217,7 +217,7 @@ fn make_departure_detail(
         .next();
 
     let status = delay_minutes
-        .map(|d| format!("delayed {}", d.to_owned()))
+        .map(|d| format!("delayed {}", d))
         .unwrap_or_else(|| "on time".to_string());
     let departure_detail = DepartureDetail {
         time: departure_overview.time.clone(),
