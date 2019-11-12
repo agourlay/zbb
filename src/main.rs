@@ -191,8 +191,14 @@ fn make_departure_detail(
     let disruptions_nodes: Vec<Node> = html.find(Class("journeyMessageHIM")).collect();
     let information: Vec<String> = disruptions_nodes
         .iter()
-        .map(|n| sanitize_text_node(*n))
-        .filter(|i| !i.is_empty())
+        .filter_map(|n| {
+            let sanitized = sanitize_text_node(*n);
+            if sanitized.is_empty() {
+                None
+            } else {
+                Some(sanitized)
+            }
+        })
         .collect();
 
     let query_details = Attr("id", "ivu_trainroute_table")
