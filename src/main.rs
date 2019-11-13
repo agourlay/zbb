@@ -1,13 +1,14 @@
 use clap::{App, Arg};
 use colored::*;
-use rayon::prelude::*;
-use rayon::*;
+use futures::future::try_join_all;
+use reqwest::Client;
 use select::document::Document;
 use select::node::Node;
 use select::predicate::*;
 use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use std::process;
+use tokio;
 
 // Service URLs
 const BASE_URL: &str = "http://mobil.bvg.de/";
@@ -67,13 +68,15 @@ struct ParsedInfo<'a> {
     direction_node: Node<'a>,
 }
 
-fn main() -> Result<(), reqwest::Error> {
+#[tokio::main]
+async fn main() -> Result<(), reqwest::Error> {
     let fast_args = get_fast_args();
     let station: String = fast_args.clone().map(|a| a.0).unwrap_or_else(|| {
         println!("Which station are you interested in ?");
         read_user_input()
     });
-    let stations = get_stations(&station)?;
+    let client = Client::builder().build()?;
+    let stations = get_stations(&client, &station).await?;
     if stations.is_empty() {
         println!("No stations found for `{}`", station);
     } else {
@@ -85,7 +88,7 @@ fn main() -> Result<(), reqwest::Error> {
             read_user_choice_range(1..=stations.len())
         };
         let picked_station = stations.get(user_station_choice - 1).unwrap(); // safe unwrap because of `read_user_choice_range`
-        let station_overview = get_station_overview(picked_station)?;
+        let station_overview = get_station_overview(&client, picked_station).await?;
 
         let mut available_lines: Vec<String> = station_overview
             .departures
@@ -120,7 +123,7 @@ fn main() -> Result<(), reqwest::Error> {
                         .to_string()
                 }
             };
-            let station_detail = get_station_detail_for_line(station_overview, line.as_str())?;
+            let station_detail = get_station_detail_for_line(&client, station_overview, line.as_str()).await?;
             display_departures(station_detail);
         }
     }
@@ -158,17 +161,18 @@ fn get_fast_args() -> Option<(String, String)> {
     fast_args
 }
 
-fn get_station_detail_for_line(
+async fn get_station_detail_for_line(
+    client: &Client,
     station_overview: StationOverview,
     line: &str,
 ) -> Result<StationDetail, reqwest::Error> {
-    let departures_detail_res: Result<Vec<DepartureDetail>, reqwest::Error> = station_overview
+    let mut gets = Vec::new();
+    station_overview
         .departures
-        .par_iter()
+        .iter()
         .filter(|&d| d.line == line)
-        .map(make_departure_detail)
-        .collect();
-    let departures = departures_detail_res?;
+        .for_each(|d| gets.push(make_departure_detail(client, d)));
+    let departures: Vec<DepartureDetail> = try_join_all(gets).await?;
     let mut disruptions: Vec<String> = departures
         .iter()
         .flat_map(|d| d.information.clone())
@@ -184,10 +188,11 @@ fn get_station_detail_for_line(
     Ok(station_detail)
 }
 
-fn make_departure_detail(
+async fn make_departure_detail(
+    client: &Client,
     departure_overview: &DepartureOverview,
 ) -> Result<DepartureDetail, reqwest::Error> {
-    let html = request_html(departure_overview.link_to_departure_detail.as_str())?;
+    let html = request_html(client, departure_overview.link_to_departure_detail.as_str()).await?;
     let disruptions_nodes: Vec<Node> = html.find(Class("journeyMessageHIM")).collect();
     let information: Vec<String> = disruptions_nodes
         .iter()
@@ -394,14 +399,17 @@ fn read_user_choice_range(r: RangeInclusive<usize>) -> usize {
     }
 }
 
-fn request_html(url: &str) -> Result<Document, reqwest::Error> {
-    let resp = reqwest::get(url)?.text()?;
+async fn request_html(client: &Client, url: &str) -> Result<Document, reqwest::Error> {
+    let resp = client.get(url).send().await?.text().await?;
     Ok(Document::from(resp.as_str()))
 }
 
-fn get_stations(user_input: &str) -> Result<Vec<StationSearch>, reqwest::Error> {
+async fn get_stations(
+    client: &Client,
+    user_input: &str,
+) -> Result<Vec<StationSearch>, reqwest::Error> {
     let full_url = format!("{}{}&input={}", BASE_URL, SEARCH_URL, user_input);
-    let html = request_html(&full_url)?;
+    let html = request_html(client, &full_url).await?;
     let stations = html
         .find(Class("select").descendant(Name("a")))
         .map(station_from_node)
@@ -424,8 +432,11 @@ fn station_from_node(node: Node) -> StationSearch {
     }
 }
 
-fn get_station_overview(station: &StationSearch) -> Result<StationOverview, reqwest::Error> {
-    let html = request_html(&station.link_to_station_overview)?;
+async fn get_station_overview(
+    client: &Client,
+    station: &StationSearch,
+) -> Result<StationOverview, reqwest::Error> {
+    let html = request_html(client, &station.link_to_station_overview).await?;
     let name = html
         .find(Attr("id", "ivu_overview_input").descendant(Name("strong")))
         .take(1)
