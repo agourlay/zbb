@@ -469,8 +469,7 @@ fn get_station_overview(station: &StationSearch) -> Result<StationOverview, reqw
                 .find(Name("a"))
                 .into_selection()
                 .first()
-                .unwrap()
-                .attr("href")
+                .and_then(|f| f.attr("href"))
                 .unwrap();
             let link_to_departure_detail = format!("{}{}", BASE_URL, line_link);
             let (line, platform) = if full_line.contains('(') {
