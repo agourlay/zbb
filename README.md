@@ -1,5 +1,7 @@
 # zbb
 
+[![Build Status](https://travis-ci.org/agourlay/zbb.svg?branch=master)](https://travis-ci.org/agourlay/zbb)
+
 **„zurück bleiben, bitte!“**
 
 `zbb` is a CLI fetching the latest schedules for the [Berliner Verkehrsbetriebe (BVG)](https://www.bvg.de/en/Welcome).
