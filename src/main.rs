@@ -241,7 +241,7 @@ async fn make_departure_detail(
     Ok(departure_detail)
 }
 
-fn display_choices(choices: &Vec<String>) -> () {
+fn display_choices(choices: &Vec<String>) {
     let choices_len = choices.len();
     choices.iter().enumerate().for_each(|(index, line)| {
         println!(
@@ -284,7 +284,7 @@ where
     column_padding(header_label, max_elem_size, true)
 }
 
-fn display_departures(station_detail: StationDetail) -> () {
+fn display_departures(station_detail: StationDetail) {
     if !station_detail.disruptions.is_empty() {
         let pretty_disruption: String =
             station_detail
