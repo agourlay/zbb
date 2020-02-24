@@ -10,9 +10,12 @@ use std::ops::RangeInclusive;
 use std::process;
 use tokio;
 
+mod zbb_errors;
+use crate::zbb_errors::ZbbError;
+
 // Service URLs
 const BASE_URL: &str = "http://mobil.bvg.de/";
-const SEARCH_URL: &str = "Fahrinfo/bin/stboard.bin/eox?ld=0.1&&rt=0&start=suchen";
+const SEARCH_URL: &str = "Fahrinfo/bin/stboard.bin/eox?ld=0.1&rt=0&start=suchen";
 
 // Columns headers
 const LINE_COLUMN: &str = "Line";
@@ -69,16 +72,16 @@ struct ParsedInfo<'a> {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), reqwest::Error> {
+async fn main() -> Result<(), ZbbError> {
     let fast_args = get_fast_args();
-    let station: String = fast_args.clone().map(|a| a.0).unwrap_or_else(|| {
+    let input_station: String = fast_args.clone().map(|a| a.0).unwrap_or_else(|| {
         println!("Which station are you interested in ?");
         read_user_input()
     });
     let client = Client::builder().build()?;
-    let stations = get_stations(&client, &station).await?;
+    let stations = get_stations(&client, &input_station).await?;
     if stations.is_empty() {
-        println!("No stations found for `{}`", station);
+        println!("No station found for input `{}`", input_station);
     } else {
         let user_station_choice = if fast_mode_enabled(&fast_args) {
             1 // in --fast mode the first one is selected
@@ -99,7 +102,7 @@ async fn main() -> Result<(), reqwest::Error> {
         available_lines.dedup();
 
         if available_lines.is_empty() {
-            println!("No lines available at this station");
+            println!("No lines available found for {}", station_overview.name);
         } else {
             let line = match fast_args {
                 Some((_, fast_line)) => {
@@ -165,7 +168,7 @@ async fn get_station_detail_for_line(
     client: &Client,
     station_overview: StationOverview,
     line: &str,
-) -> Result<StationDetail, reqwest::Error> {
+) -> Result<StationDetail, ZbbError> {
     let mut gets = Vec::new();
     station_overview
         .departures
@@ -191,7 +194,7 @@ async fn get_station_detail_for_line(
 async fn make_departure_detail(
     client: &Client,
     departure_overview: &DepartureOverview,
-) -> Result<DepartureDetail, reqwest::Error> {
+) -> Result<DepartureDetail, ZbbError> {
     let html = request_html(client, departure_overview.link_to_departure_detail.as_str()).await?;
     let disruptions_nodes: Vec<Node> = html.find(Class("journeyMessageHIM")).collect();
     let information: Vec<String> = disruptions_nodes
@@ -375,13 +378,13 @@ fn sentence_chunks(s: &str, max_line_len: usize) -> String {
 
 fn read_user_input() -> String {
     let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
+    std::io::stdin().read_line(&mut line).expect("enable to read line from user");
     line.trim_end().to_string()
 }
 
 fn read_user_choice_int() -> Result<usize, ParseIntError> {
     let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
+    std::io::stdin().read_line(&mut line).expect("enable to read choice from user");
     line.trim_end().parse::<usize>()
 }
 
@@ -407,7 +410,7 @@ async fn request_html(client: &Client, url: &str) -> Result<Document, reqwest::E
 async fn get_stations(
     client: &Client,
     user_input: &str,
-) -> Result<Vec<StationSearch>, reqwest::Error> {
+) -> Result<Vec<StationSearch>, ZbbError> {
     let full_url = format!("{}{}&input={}", BASE_URL, SEARCH_URL, user_input);
     let html = request_html(client, &full_url).await?;
     let stations = html
@@ -428,21 +431,15 @@ fn sanitize_text_node(on: Node) -> String {
 fn station_from_node(node: Node) -> StationSearch {
     StationSearch {
         name: sanitize_text_node(node),
-        link_to_station_overview: format!("{}{}", BASE_URL, node.attr("href").unwrap()),
+        link_to_station_overview: format!("{}{}", BASE_URL, node.attr("href").expect(format!("expected to find an href node {:#?}", node).as_str())),
     }
 }
 
 async fn get_station_overview(
     client: &Client,
     station: &StationSearch,
-) -> Result<StationOverview, reqwest::Error> {
+) -> Result<StationOverview, ZbbError> {
     let html = request_html(client, &station.link_to_station_overview).await?;
-    let name = html
-        .find(Attr("id", "ivu_overview_input").descendant(Name("strong")))
-        .take(1)
-        .next()
-        .unwrap()
-        .text();
     let query = Class("ivu_table")
         .descendant(Name("tbody"))
         .descendant(Name("tr"));
@@ -481,7 +478,7 @@ async fn get_station_overview(
                 .into_selection()
                 .first()
                 .and_then(|f| f.attr("href"))
-                .unwrap();
+                .expect("expected href");
             let link_to_departure_detail = format!("{}{}", BASE_URL, line_link);
             let (line, platform) = if full_line.contains('(') {
                 let line = full_line.chars().take_while(|c| c != &'(').collect();
@@ -506,7 +503,7 @@ async fn get_station_overview(
             }
         })
         .collect();
-
+    let name = station.name.clone();
     let station_overview = StationOverview { name, departures };
     Ok(station_overview)
 }
