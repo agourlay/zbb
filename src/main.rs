@@ -8,7 +8,6 @@ use select::predicate::*;
 use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use std::process;
-use tokio;
 
 mod zbb_errors;
 use crate::zbb_errors::ZbbError;
@@ -126,7 +125,8 @@ async fn main() -> Result<(), ZbbError> {
                         .to_string()
                 }
             };
-            let station_detail = get_station_detail_for_line(&client, station_overview, line.as_str()).await?;
+            let station_detail =
+                get_station_detail_for_line(&client, station_overview, line.as_str()).await?;
             display_departures(station_detail);
         }
     }
@@ -378,13 +378,17 @@ fn sentence_chunks(s: &str, max_line_len: usize) -> String {
 
 fn read_user_input() -> String {
     let mut line = String::new();
-    std::io::stdin().read_line(&mut line).expect("enable to read line from user");
+    std::io::stdin()
+        .read_line(&mut line)
+        .expect("enable to read line from user");
     line.trim_end().to_string()
 }
 
 fn read_user_choice_int() -> Result<usize, ParseIntError> {
     let mut line = String::new();
-    std::io::stdin().read_line(&mut line).expect("enable to read choice from user");
+    std::io::stdin()
+        .read_line(&mut line)
+        .expect("enable to read choice from user");
     line.trim_end().parse::<usize>()
 }
 
@@ -407,10 +411,7 @@ async fn request_html(client: &Client, url: &str) -> Result<Document, reqwest::E
     Ok(Document::from(resp.as_str()))
 }
 
-async fn get_stations(
-    client: &Client,
-    user_input: &str,
-) -> Result<Vec<StationSearch>, ZbbError> {
+async fn get_stations(client: &Client, user_input: &str) -> Result<Vec<StationSearch>, ZbbError> {
     let full_url = format!("{}{}&input={}", BASE_URL, SEARCH_URL, user_input);
     let html = request_html(client, &full_url).await?;
     let stations = html
@@ -431,7 +432,12 @@ fn sanitize_text_node(on: Node) -> String {
 fn station_from_node(node: Node) -> StationSearch {
     StationSearch {
         name: sanitize_text_node(node),
-        link_to_station_overview: format!("{}{}", BASE_URL, node.attr("href").expect(format!("expected to find an href node {:#?}", node).as_str())),
+        link_to_station_overview: format!(
+            "{}{}",
+            BASE_URL,
+            node.attr("href")
+                .unwrap_or_else(|| panic!("expected to find an href node {:#?}", node))
+        ),
     }
 }
 
