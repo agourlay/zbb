@@ -116,7 +116,7 @@ async fn main() -> Result<(), ZbbError> {
                     }
                 }
                 None => {
-                    println!("Several lines are available, please select the line(s) to display:");
+                    println!("Several lines are available, please select the line to display:");
                     display_choices(&available_lines);
                     let user_line_choice = read_user_choice_range(1..=available_lines.len());
                     available_lines
@@ -486,8 +486,8 @@ async fn get_station_overview(
                 .and_then(|f| f.attr("href"))
                 .expect("expected href");
             let link_to_departure_detail = format!("{}{}", BASE_URL, line_link);
-            let (line, platform) = if full_line.contains('(') {
-                let line = full_line.chars().take_while(|c| c != &'(').collect();
+            let (line, platform) = if full_line.contains("platf.") {
+                let line = full_line.split("platf.").take(1).collect();
                 let platform_raw: String = full_line
                     .chars()
                     .rev()

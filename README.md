@@ -31,7 +31,7 @@ This looks like a bad commute!
 
 ## Usage
 
-By default calling `zbb` without any arguments will start the interactive mode.
+By default, calling `zbb` without any arguments will start the interactive mode.
 It consists in a series of questions to find out what you want.
 
 If you want to repeat a query that you know to be valid, you can use the `fast` mode.
@@ -46,4 +46,10 @@ Then nothing prevents you from creating an alias :)
 
 ## Installation
 
-Binaries for `MacOS` are available in the `releases` section otherwise you can build the project using [Cargo](https://doc.rust-lang.org/stable/cargo/getting-started/installation.html)
+Build the project using [Cargo](https://doc.rust-lang.org/stable/cargo/getting-started/installation.html)
+
+Then run the following command in the project directory:
+
+```
+cargo install --path=.
+```
