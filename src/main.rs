@@ -1,4 +1,3 @@
-use clap::{App, Arg};
 use colored::*;
 use futures::future::try_join_all;
 use reqwest::Client;
@@ -9,7 +8,14 @@ use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use std::process;
 
+mod args;
+mod models;
+mod utils;
 mod zbb_errors;
+
+use crate::args::get_fast_args;
+use crate::models::*;
+use crate::utils::*;
 use crate::zbb_errors::ZbbError;
 
 // Service URLs
@@ -23,52 +29,6 @@ const DIRECTION_COLUMN: &str = "Direction";
 const STATUS_COLUMN: &str = "Status";
 const PLATFORM_COLUMN: &str = "Platform";
 const NO_DELAY: &str = "±0\'";
-
-#[derive(Debug)]
-struct StationSearch {
-    name: String,
-    link_to_station_overview: String,
-}
-
-#[derive(Debug)]
-struct DepartureOverview {
-    time: String,
-    line: String,
-    direction: String,
-    platform: Option<String>,
-    link_to_departure_detail: String,
-}
-
-#[derive(Debug)]
-struct StationOverview {
-    name: String,
-    departures: Vec<DepartureOverview>,
-}
-
-#[derive(Debug)]
-struct StationDetail {
-    name: String,
-    departures: Vec<DepartureDetail>,
-    disruptions: Vec<String>,
-}
-
-#[derive(Debug)]
-struct DepartureDetail {
-    time: String,
-    line: String,
-    direction: String,
-    platform: Option<String>,
-    status: String,
-    information: Vec<String>,
-}
-
-#[derive(Debug)]
-struct ParsedInfo<'a> {
-    index: usize,
-    time_node: Node<'a>,
-    line_node: Node<'a>,
-    direction_node: Node<'a>,
-}
 
 #[tokio::main]
 async fn main() -> Result<(), ZbbError> {
@@ -135,33 +95,6 @@ async fn main() -> Result<(), ZbbError> {
 
 fn fast_mode_enabled(args: &Option<(String, String)>) -> bool {
     args.is_some()
-}
-
-fn get_fast_args() -> Option<(String, String)> {
-    let matches = App::new("zbb")
-        .version("0.1.0")
-        .author("Arnaud Gourlay <arnaud.gourlay@gmail.com>")
-        .about("The BVG realtime schedules in your terminal")
-        .arg(
-            Arg::with_name("fast")
-                .help("used to by-pass the interactive mode")
-                .long("fast")
-                .short("F")
-                .takes_value(true)
-                .value_names(&["STATION", "LINE"])
-                .required(false)
-                .min_values(2)
-                .max_values(2),
-        )
-        .get_matches();
-
-    let fast_args: Option<(String, String)> = matches.values_of("fast").map(|mut values| {
-        (
-            values.next().unwrap().to_string(),
-            values.next().unwrap().to_string(),
-        )
-    });
-    fast_args
 }
 
 async fn get_station_detail_for_line(
@@ -419,14 +352,6 @@ async fn get_stations(client: &Client, user_input: &str) -> Result<Vec<StationSe
         .map(station_from_node)
         .collect();
     Ok(stations)
-}
-
-fn sanitize(s: String) -> String {
-    s.replace("\n", "").trim().to_string()
-}
-
-fn sanitize_text_node(on: Node) -> String {
-    sanitize(on.text())
 }
 
 fn station_from_node(node: Node) -> StationSearch {
