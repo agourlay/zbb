@@ -9,6 +9,7 @@ pub(crate) struct StationSearch {
 #[derive(Debug)]
 pub(crate) struct DepartureOverview {
     pub time: String,
+
     pub line: String,
     pub direction: String,
     pub platform: Option<String>,
@@ -23,7 +24,6 @@ pub(crate) struct StationOverview {
 
 #[derive(Debug)]
 pub(crate) struct StationDetail {
-    pub name: String,
     pub departures: Vec<DepartureDetail>,
     pub disruptions: Vec<String>,
 }

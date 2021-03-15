@@ -20,8 +20,14 @@ pub fn get_fast_args() -> Option<(String, String)> {
 
     let fast_args: Option<(String, String)> = matches.values_of("fast").map(|mut values| {
         (
-            values.next().unwrap().to_string(),
-            values.next().unwrap().to_string(),
+            values
+                .next()
+                .expect("impossible because min_values = 2")
+                .to_string(),
+            values
+                .next()
+                .expect("impossible because min_values = 2")
+                .to_string(),
         )
     });
     fast_args

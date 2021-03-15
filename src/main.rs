@@ -1,5 +1,5 @@
 use colored::*;
-use futures::future::try_join_all;
+use futures_util::stream::{self, StreamExt};
 use reqwest::Client;
 use select::document::Document;
 use select::node::Node;
@@ -46,10 +46,13 @@ async fn main() -> Result<(), ZbbError> {
             1 // in --fast mode the first one is selected
         } else {
             println!("Several stations are available, please select the exact location:");
-            display_choices(&stations.iter().map(|s| s.name.to_owned()).collect());
+            let names = &stations.iter().map(|s| s.name.to_owned()).collect();
+            display_choices(names);
             read_user_choice_range(1..=stations.len())
         };
-        let picked_station = stations.get(user_station_choice - 1).unwrap(); // safe unwrap because of `read_user_choice_range`
+        let picked_station = stations
+            .get(user_station_choice - 1)
+            .expect("impossible because of `read_user_choice_range`");
         let station_overview = get_station_overview(&client, picked_station).await?;
 
         let mut available_lines: Vec<String> = station_overview
@@ -81,13 +84,13 @@ async fn main() -> Result<(), ZbbError> {
                     let user_line_choice = read_user_choice_range(1..=available_lines.len());
                     available_lines
                         .get(user_line_choice - 1)
-                        .unwrap()
+                        .expect("user_line_choice for station index invalid")
                         .to_string()
                 }
             };
             let station_detail =
-                get_station_detail_for_line(&client, station_overview, line.as_str()).await?;
-            display_departures(station_detail);
+                get_station_detail_for_line(&client, &station_overview, line.as_str()).await?;
+            display_departures(&station_overview.name, station_detail);
         }
     }
     Ok(())
@@ -99,16 +102,21 @@ fn fast_mode_enabled(args: &Option<(String, String)>) -> bool {
 
 async fn get_station_detail_for_line(
     client: &Client,
-    station_overview: StationOverview,
+    station_overview: &StationOverview,
     line: &str,
 ) -> Result<StationDetail, ZbbError> {
-    let mut gets = Vec::new();
-    station_overview
+    let fetch_futures = station_overview
         .departures
         .iter()
         .filter(|&d| d.line == line)
-        .for_each(|d| gets.push(make_departure_detail(client, d)));
-    let departures: Vec<DepartureDetail> = try_join_all(gets).await?;
+        .map(|d| fetch_departure_detail(client, d));
+    // play nice with the BVG API :)
+    let departures_res: Vec<_> = stream::iter(fetch_futures)
+        .buffer_unordered(2)
+        .collect::<Vec<_>>()
+        .await;
+    // collect Results
+    let departures = departures_res.into_iter().collect::<Result<Vec<_>, _>>()?;
     let mut disruptions: Vec<String> = departures
         .iter()
         .flat_map(|d| d.information.clone())
@@ -117,14 +125,13 @@ async fn get_station_detail_for_line(
     disruptions.dedup();
 
     let station_detail = StationDetail {
-        name: station_overview.name,
         departures,
         disruptions,
     };
     Ok(station_detail)
 }
 
-async fn make_departure_detail(
+async fn fetch_departure_detail(
     client: &Client,
     departure_overview: &DepartureOverview,
 ) -> Result<DepartureDetail, ZbbError> {
@@ -220,7 +227,7 @@ where
     column_padding(header_label, max_elem_size, true)
 }
 
-fn display_departures(station_detail: StationDetail) {
+fn display_departures(station_name: &str, station_detail: StationDetail) {
     if !station_detail.disruptions.is_empty() {
         let pretty_disruption: String =
             station_detail
@@ -239,7 +246,6 @@ fn display_departures(station_detail: StationDetail) {
             pretty_disruption
         );
     }
-    let station_name = station_detail.name;
     println!("Next departures from {}\n", station_name);
     let departures = station_detail.departures;
     let line_header_padding = padding_for_header(&departures, |d| &d.line, LINE_COLUMN);
