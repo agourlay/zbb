@@ -9,7 +9,6 @@ pub(crate) struct StationSearch {
 #[derive(Debug)]
 pub(crate) struct DepartureOverview {
     pub time: String,
-
     pub line: String,
     pub direction: String,
     pub platform: Option<String>,

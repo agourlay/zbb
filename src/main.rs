@@ -45,10 +45,14 @@ async fn main() -> Result<(), ZbbError> {
         let user_station_choice = if fast_mode_enabled(&fast_args) {
             1 // in --fast mode the first one is selected
         } else {
-            println!("Several stations are available, please select the exact location:");
-            let names = &stations.iter().map(|s| s.name.to_owned()).collect();
-            display_choices(names);
-            read_user_choice_range(1..=stations.len())
+            let stations_len = stations.len();
+            println!(
+                "{} stations are available for that name, please select one:",
+                stations_len
+            );
+            let names: Vec<String> = stations.iter().map(|s| s.name.to_owned()).collect();
+            display_choices(&names);
+            read_user_choice_range(1..=stations_len)
         };
         let picked_station = stations
             .get(user_station_choice - 1)
@@ -184,7 +188,7 @@ async fn fetch_departure_detail(
     Ok(departure_detail)
 }
 
-fn display_choices(choices: &Vec<String>) {
+fn display_choices(choices: &[String]) {
     let choices_len = choices.len();
     choices.iter().enumerate().for_each(|(index, line)| {
         println!(
@@ -223,7 +227,7 @@ where
         .iter()
         .map(|d| field_selector(d).chars().count())
         .max_by(|x, y| x.cmp(y))
-        .unwrap();
+        .expect("expected non empty departures");
     column_padding(header_label, max_elem_size, true)
 }
 
@@ -387,9 +391,9 @@ async fn get_station_overview(
         .filter_map(|(index, node)| {
             let blocks: Vec<Node> = node.find(Name("td")).into_selection().iter().collect();
             if blocks.len() == 3 {
-                let time_node = blocks.get(0).unwrap();
-                let line_node = blocks.get(1).unwrap();
-                let direction_node = blocks.get(2).unwrap();
+                let time_node = blocks.get(0).expect("expected 3 blocks");
+                let line_node = blocks.get(1).expect("expected 3 blocks");
+                let direction_node = blocks.get(2).expect("expected 3 blocks");
                 Some(ParsedInfo {
                     index,
                     time_node: *time_node,
