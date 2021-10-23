@@ -42,13 +42,3 @@ e.g. `zbb --fast Sonnenallee S42`
 Then nothing prevents you from creating an alias :)
 
 `alias next-train-home='zbb --fast Sonnenallee S42'`
-
-## Installation
-
-Build the project using [Cargo](https://doc.rust-lang.org/stable/cargo/getting-started/installation.html)
-
-Then run the following command in the project directory:
-
-```
-cargo install --path=.
-```
