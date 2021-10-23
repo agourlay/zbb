@@ -1,4 +1,5 @@
 # zbb
+[![Build](https://github.com/agourlay/zbb/actions/workflows/ci.yml/badge.svg)](https://github.com/agourlay/zbb/actions/workflows/ci.yml)
 
 **„zurück bleiben, bitte!“**
 
